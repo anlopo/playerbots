@@ -601,16 +601,36 @@ bool PlayerbotAIConfig::Initialize()
     llmApiJson = config.GetStringDefault("AiPlayerbot.LLMApiJson", "{ \"max_length\": 100, \"prompt\": \"[<pre prompt>]<context> <prompt> <post prompt>\"}");
     llmContextLength = config.GetIntDefault("AiPlayerbot.LLMContextLength", 4096);
 
-    llmPrePrompt = config.GetStringDefault("AiPlayerbot.LLMPrePrompt", "You are a roleplaying character in World of Warcraft: <expansion name>. Your name is <bot name>. The player <player name> is speaking to you <channel name> and is an <player race> <player class> of level <player level>. You are level <bot level> and play as a <bot race> <bot class> that is currently in <bot zone>. Answer as a roleplaying character. Limit responses to 100 characters.");
+    llmPrePrompt = config.GetStringDefault("AiPlayerbot.LLMPrePrompt", "You are a roleplaying character in World of Warcraft: <expansion name>. Your name is <bot name>. The player <player name> is speaking to you <channel name> and is an <player race> <player class> of level <player level>. You are level <bot level> and play as a <bot race> <bot class> that is currently in <bot subzone> (<bot zone>). Answer as a roleplaying character. Limit responses to 100 characters.");
     llmPrompt = config.GetStringDefault("AiPlayerbot.LLMPrompt", "<player name>:<player message>");
     llmPostPrompt = config.GetStringDefault("AiPlayerbot.LLMPostPrompt", "<bot name>:");
 
-    llmResponseStartPattern = config.GetStringDefault("AiPlayerbot.LLMResponseStartPattern", "\"results\":[{\"text\":\"");
-    std::replace(llmResponseStartPattern.begin(), llmResponseStartPattern.end(), '\'', '\"');
-    llmResponseEndPattern = config.GetStringDefault("AiPlayerbot.LLMResponseEndPattern", "\"");
-    std::replace(llmResponseEndPattern.begin(), llmResponseEndPattern.end(), '\'', '\"');
+    llmResponseStartPattern = config.GetStringDefault("AiPlayerbot.LLMResponseStartPattern", "(\"text\":\\s*\")");
+    llmResponseEndPattern = config.GetStringDefault("AiPlayerbot.LLMResponseEndPattern", "(\"|<player name>:)");
+    llmResponseSplitPattern = config.GetStringDefault("AiPlayerbot.LLMResponseSplitPattern", "(.*?)(\\.|\\?|\\!|\n|<bot name>:|$)\\s*");
 
-    llmPreventTalkingForPlayer = config.GetBoolDefault("AiPlayerbot.LLMPreventTalkingForPlayer", false);
+    try {
+        std::regex pattern(llmResponseStartPattern);
+    }
+    catch (const std::regex_error& e) {        
+        sLog.outError("Regex error in %s: %s", llmResponseStartPattern,  e.what());
+    }
+
+    try {
+        std::regex pattern(llmResponseEndPattern);
+    }
+    catch (const std::regex_error& e) {
+        sLog.outError("Regex error in %s: %s", llmResponseEndPattern, e.what());
+    }
+
+    try {
+        std::regex pattern(llmResponseEndPattern);
+    }
+    catch (const std::regex_error& e) {
+        sLog.outError("Regex error in %s: %s", llmResponseSplitPattern, e.what());
+    }
+
+    llmGlobalContext = config.GetBoolDefault("AiPlayerbot.LLMGlobalContext", false);
     llmBotToBotChatChance = config.GetIntDefault("AiPlayerbot.LLMBotToBotChatChance", false);
 
     //LLM END

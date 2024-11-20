@@ -188,14 +188,21 @@ void ChatReplyAction::ChatReplyDo(Player* bot, uint32 type, uint32 guid1, uint32
     if (bot->GetPlayerbotAI() && bot->GetPlayerbotAI()->HasStrategy("ai chat", BotState::BOT_STATE_NON_COMBAT) && chatChannelSource != ChatChannelSource::SRC_UNDEFINED)
     {
         Player* player = sObjectAccessor.FindPlayer(ObjectGuid(HIGHGUID_PLAYER, guid1));
+
+        PlayerbotAI* ai = bot->GetPlayerbotAI();
+        AiObjectContext* context = ai->GetAiObjectContext();
+
+        std::string llmChannel;
+
+        if (!sPlayerbotAIConfig.llmGlobalContext)
+            llmChannel = ((chatChannelSource == ChatChannelSource::SRC_WHISPER) ? name : std::to_string(chatChannelSource));
+
+        std::string llmContext = AI_VALUE(std::string, "manual string::llmcontext" + llmChannel);
+
         if (player && (player->isRealPlayer() || (sPlayerbotAIConfig.llmBotToBotChatChance && urand(0,99) < sPlayerbotAIConfig.llmBotToBotChatChance)))
         {
-            PlayerbotAI* ai = bot->GetPlayerbotAI();
-            AiObjectContext* context = ai->GetAiObjectContext();
             std::string botName = bot->GetName();
             std::string playerName = player->GetName();
-
-            std::string llmContext = AI_VALUE(std::string, "manual string::llmcontext");
 
             std::map<std::string, std::string> placeholders;
             placeholders["<bot name>"] = botName;
@@ -219,6 +226,7 @@ void ChatReplyAction::ChatReplyDo(Player* bot, uint32 type, uint32 guid1, uint32
             placeholders["<expansion name>"] = "Wrath of the Lich King";
 #endif
             placeholders["<bot zone>"] = WorldPosition(bot).getAreaName();
+            placeholders["<bot subzone>"] = WorldPosition(bot).getAreaOverride();
 
             switch (chatChannelSource)
             {
@@ -250,6 +258,11 @@ void ChatReplyAction::ChatReplyDo(Player* bot, uint32 type, uint32 guid1, uint32
 
             placeholders["<player message>"] = msg;
 
+            std::string startPattern, endPattern, splitPattern;
+            startPattern = BOT_TEXT2(sPlayerbotAIConfig.llmResponseStartPattern, placeholders);
+            endPattern = BOT_TEXT2(sPlayerbotAIConfig.llmResponseEndPattern, placeholders);
+            splitPattern = BOT_TEXT2(sPlayerbotAIConfig.llmResponseSplitPattern, placeholders);
+
             std::map<std::string, std::string> jsonFill;
             jsonFill["<pre prompt>"] = BOT_TEXT2(sPlayerbotAIConfig.llmPrePrompt, placeholders);
             jsonFill["<prompt>"] = BOT_TEXT2(sPlayerbotAIConfig.llmPrompt, placeholders); 
@@ -257,24 +270,7 @@ void ChatReplyAction::ChatReplyDo(Player* bot, uint32 type, uint32 guid1, uint32
 
             uint32 currentLength = jsonFill["<pre prompt>"].size() + jsonFill["<context>"].size() + jsonFill["<prompt>"].size() + llmContext.size();
 
-            if(sPlayerbotAIConfig.llmContextLength && currentLength > sPlayerbotAIConfig.llmContextLength)
-            {
-                uint32 cutNeeded = currentLength - sPlayerbotAIConfig.llmContextLength;
-
-                if (cutNeeded > llmContext.size())
-                    llmContext.clear();
-                else
-                {
-                    uint32 cutPosition = 0;
-                    for (auto& c : llmContext)
-                    {
-                        cutPosition++;
-                        if (cutPosition >= cutNeeded && c == ' ' || c == '.')
-                            break;
-                    }
-                    llmContext = llmContext.substr(cutPosition);
-                }
-            }
+            PlayerbotLLMInterface::LimitContext(llmContext, currentLength);
 
             jsonFill["<context>"] = llmContext;
 
@@ -316,10 +312,9 @@ void ChatReplyAction::ChatReplyDo(Player* bot, uint32 type, uint32 guid1, uint32
 
             WorldSession* session = bot->GetSession();
 
+            std::future<std::vector<WorldPacket>> futurePackets = std::async([type, playerName, json, startPattern, endPattern, splitPattern] {
 
-            std::future<std::vector<WorldPacket>> futurePackets = std::async([type, botName, playerName, json] {
-
-                WorldPacket packet_template(CMSG_MESSAGECHAT, 4096);
+                WorldPacket packet_template(CMSG_MESSAGECHAT);
 
                 uint32 lang = LANG_UNIVERSAL;
 
@@ -331,28 +326,7 @@ void ChatReplyAction::ChatReplyDo(Player* bot, uint32 type, uint32 guid1, uint32
 
                 std::string response = PlayerbotLLMInterface::Generate(json);
 
-                size_t pos;
-
-                if (sPlayerbotAIConfig.llmPreventTalkingForPlayer)
-                {
-                    pos = response.find(playerName + ":");
-                    if (pos != std::string::npos)
-                        response = response.substr(0, pos) + sPlayerbotAIConfig.llmResponseEndPattern;
-                }
-
-                pos = 0;
-
-                while ((pos = response.find(botName + ":", pos)) != std::string::npos) {
-                    response.replace(pos, botName.length() + 1, "|");
-                    pos += 1;
-                }
-
-                while ((pos = response.find("/n", pos)) != std::string::npos) {
-                    response.replace(pos, 2, "|");
-                    pos += 1;
-                }
-
-                std::vector<std::string> lines = PlayerbotLLMInterface::ParseResponse(response, sPlayerbotAIConfig.llmResponseStartPattern, sPlayerbotAIConfig.llmResponseEndPattern);
+                std::vector<std::string> lines = PlayerbotLLMInterface::ParseResponse(response, startPattern, endPattern, splitPattern);
 
                 std::vector<WorldPacket> packets;
                 for (auto& line : lines)
@@ -366,8 +340,13 @@ void ChatReplyAction::ChatReplyDo(Player* bot, uint32 type, uint32 guid1, uint32
 
             ai->SendDelayedPacket(session, std::move(futurePackets));
 
-            SET_AI_VALUE(std::string, "manual string::llmcontext", llmContext);
         }
+        else if(sPlayerbotAIConfig.llmBotToBotChatChance)
+        {
+            llmContext = llmContext + " " + bot->GetName() + ":" + msg;
+            PlayerbotLLMInterface::LimitContext(llmContext, llmContext.size());
+        }
+        SET_AI_VALUE(std::string, "manual string::llmcontext" + llmChannel, llmContext);
 
         return;
     }

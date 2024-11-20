@@ -335,9 +335,9 @@ public:
     bool bExplicitDbStoreSave = false;
 
     //LM BEGIN
-    std::string llmApiEndpoint, llmApiKey, llmApiJson, llmPrePrompt, llmPrompt, llmPostPrompt, llmResponseStartPattern, llmResponseEndPattern;
+    std::string llmApiEndpoint, llmApiKey, llmApiJson, llmPrePrompt, llmPrompt, llmPostPrompt, llmResponseStartPattern, llmResponseEndPattern, llmResponseSplitPattern;
     uint32 llmContextLength, llmBotToBotChatChance;
-    bool llmPreventTalkingForPlayer;
+    bool llmGlobalContext;
     ParsedUrl llmEndPointUrl;
     //LM END
 
