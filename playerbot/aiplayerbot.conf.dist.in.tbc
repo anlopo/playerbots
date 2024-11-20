@@ -961,20 +961,21 @@ AiPlayerbot.PerfMonEnabled = 0
 # AiPlayerbot.LLMContextLength = 4096
 
 # The default prompt to send at the beginning of each conversation.
-# AiPlayerbot.LLMPrePrompt = You are a roleplaying character in World of Warcraft: <expansion name>. Your name is <bot name>. The player <player name> is speaking to you <channel name> and is an <player gender> <player race> <player class> of level <player level>. You are level <bot level> and play as a <bot gender> <bot race> <bot class> that is currently in <bot zone>. Answer as a roleplaying character. Limit responses to 100 characters.
+# AiPlayerbot.LLMPrePrompt = You are a roleplaying character in World of Warcraft: <expansion name>. Your name is <bot name>. The player <player name> is speaking to you <channel name> and is an <player gender> <player race> <player class> of level <player level>. You are level <bot level> and play as a <bot gender> <bot race> <bot class> that is currently in <bot subzone> (<bot zone>). Answer as a roleplaying character. Limit responses to 100 characters.
 # The prompt part containing the last message from the player the bot is responding to.
 # AiPlayerbot.LLMPrompt = <player name>:<player message>
 # The default prompt to send at the end of each conversation.
 # AiPlayerbot.LLMPostPrompt = <bot name>:
 
-# What pattern the server should look for to find the start of the repsonse the llm gave. Note spaces in the actual response are ignored of the start pattern.
-# Double quotes at the start and end of the pattern need to be single quotes to be read correctly.
-# AiPlayerbot.LLMResponseStartPattern = 'results":[{"text":'
+# What pattern the server should look for to find the start of the repsonse the llm gave.
+# AiPlayerbot.LLMResponseStartPattern = (\"text\":\\s*\")
 # What pattern the server should look for that the response has ended.
-# AiPlayerbot.LLMResponseEndPattern = '
+# AiPlayerbot.LLMResponseEndPattern = (\"|<player name>:)
+# What pattern the server should look for to split the repsonse in multiple lines
+# AiPlayerbot.LLMResponseSplitPattern = (.*?)(\\.|\\?|\\!|\n|<bot name>:|$)\\s*
 
-# Stop parsing the LLM response the moment it finds the pattern <player name>: to stop it impersonating the player.
-# AiPlayerbot.LLMPreventTalkingForPlayer = 0
+# Should previous conversations from all channels be mixed?
+# AiPlayerbot.LLMGlobalContext = 0
 
 # The chance bots will use ai chat to respond to other bots 
 # AiPlayerbot.LLMBotToBotChatChance = 0
@@ -983,7 +984,7 @@ AiPlayerbot.PerfMonEnabled = 0
 # AiPlayerbot.LLMApiEndpoint = http://IP/URL:PORT/v1/chat/completions
 # AiPlayerbot.LLMApiKey = YOUR_API_KEY
 # AiPlayerbot.LLMApiJson = {\"model\": \"gpt-4o-mini\", "\"messages\": [{\"role\": \"system\", \"content\": \"<pre prompt> <context>\"},{\"role\": \"user\", \"content\": \"<prompt> <post prompt>\"}],\"max_tokens\": 60}
-# AiPlayerbot.LLMPrePrompt = You are a roleplaying character in World of Warcraft: <expansion name>. Your name is <bot name>. The player speaking to you is named <player name>. You are level <bot level> and play as a <bot race> <bot class>. Answer as a roleplaying character. Limit responses to 100 characters.
+# AiPlayerbot.LLMPrePrompt = You are a roleplaying character in World of Warcraft: <expansion name>. Your name is <bot name>. The player <player name> is speaking to you <channel name> and is an <player gender> <player race> <player class> of level <player level>. You are level <bot level> and play as a <player gender> <bot race> <bot class> that is currently in <bot subzone> (<bot zone>). Answer as a roleplaying character. Limit responses to 100 characters.
 # AiPlayerbot.LLMPrompt = <player message>
 # AiPlayerbot.LLMPostPrompt = 
 # AiPlayerbot.LLMResponseStartPattern = 'message":{"role":"system","content":'
