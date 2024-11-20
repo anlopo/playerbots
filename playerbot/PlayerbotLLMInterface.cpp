@@ -93,6 +93,9 @@ std::string PlayerbotLLMInterface::Generate(const std::string& prompt) {
     request << "\r\n";
     request << body;
 
+    //sLog.outBasic("BotLLM Request: %s", body.c_str());
++    sLog.outString("BotLLM Request: %s", body.c_str());
+
     // Send the request
     if (send(sock, request.str().c_str(), request.str().size(), 0) < 0) {
         sLog.outError("BotLLM: Failed to send request");
@@ -130,6 +133,9 @@ std::string PlayerbotLLMInterface::Generate(const std::string& prompt) {
     if (pos != std::string::npos) {
         response = response.substr(pos + 4);
     }
+
+    //sLog.outBasic("BotLLM Response: %s", response.c_str());
++    sLog.outString("BotLLM Response: %s", response.c_str());
 
     return response;
 }
